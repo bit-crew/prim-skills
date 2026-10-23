@@ -51,6 +51,7 @@ fn main() {
     let arg = std::env::args().nth(1).unwrap_or_default();
     let result = match arg.as_str() {
         "update" => run_update(),
+        "uninstall" => run_uninstall(),
         _ => run_install(),
     };
     if let Err(e) = result {
@@ -81,6 +82,52 @@ fn run_update() -> io::Result<()> {
     log("Actualizando skills externas (skills update)...");
     let _ = run_npx(&["-y", "skills", "update", "--global", "--yes"]);
     ok("Actualizacion de skills externas completa.");
+    Ok(())
+}
+
+/// Uninstall every skill this installer manages from ~/.agents/skills.
+/// Own skills: remove the dirs that match this repo's `skills/*` (cloned to
+/// learn their names). External skills: `skills remove` by name. Non-fatal.
+fn run_uninstall() -> io::Result<()> {
+    let home = dirs::home_dir().ok_or_else(|| io::Error::other("sin HOME"))?;
+    let dest = agents_skills_dir(&home);
+
+    // Own skills: discover names from a shallow clone, remove matching dirs.
+    let tmp = std::env::temp_dir().join(format!("prim-skills-rm-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    if run_ok(
+        "git",
+        &["clone", "--depth", "1", SKILLS_REPO, tmp.to_str().unwrap()],
+    ) {
+        if let Ok(entries) = std::fs::read_dir(tmp.join("skills")) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                if entry.path().is_dir() {
+                    let target = dest.join(entry.file_name());
+                    if target.exists() && std::fs::remove_dir_all(&target).is_ok() {
+                        log(&format!(
+                            "skill propia eliminada: {}",
+                            entry.file_name().to_string_lossy()
+                        ));
+                    }
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(&tmp);
+    } else {
+        err("no se pudo clonar prim-skills; se omite la limpieza de skills propias.");
+    }
+
+    // External skills: remove by name via the skills CLI.
+    if has_npx() {
+        for (_, skill) in EXTERNAL_SKILLS {
+            log(&format!("Quitando skill externa {skill}..."));
+            let _ = run_npx(&["-y", "skills", "remove", skill, "--yes"]);
+        }
+    } else {
+        err("npx no disponible; no se pueden quitar las skills externas.");
+    }
+
+    ok("Skills desinstaladas de ~/.agents/skills.");
     Ok(())
 }
 

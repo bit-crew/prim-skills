@@ -52,9 +52,20 @@ installer** (`installer/`, a Rust binary `prim-skills-install`).
 - Install / bootstrap:
   ```sh
   curl -fsSL https://raw.githubusercontent.com/bit-crew/prim-skills/main/install.sh | sh
-  # update external skills:
+  ```
+
+- Update external skills to their latest version:
+  ```sh
   curl -fsSL .../install.sh | sh -s -- update
   ```
+
+- Uninstall every managed skill from `~/.agents/skills` (own + external):
+  ```sh
+  curl -fsSL .../install.sh | sh -s -- uninstall
+  ```
+
+  Running the binary directly (if already downloaded): `prim-skills-install`
+  (install/refresh), `prim-skills-install update`, `prim-skills-install uninstall`.
 
 - **devlab** (`bit-crew/devlab`) provisions the environment + Pi/gentle-ai and,
   on the VPS profile, calls `prim-skills-install` automatically. devlab no longer
