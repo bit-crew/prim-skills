@@ -37,13 +37,30 @@ prim-skills/
 
 ## How it is consumed
 
-This repo holds **content only**. Installation and curation into a specific
-agent live elsewhere:
+This repo holds **content** (the skills + instructions + manifest) **and its own
+installer** (`installer/`, a Rust binary `prim-skills-install`).
 
-- **devlab** (`bit-crew/devlab`) clones this repo during provisioning and curates
-  it into the Pi / gentle-ai install (copies skills into `~/.pi/agent/skills`,
-  concatenates instructions, refreshes the skill registry), then removes the
-  clone. The content is never vendored into devlab.
+- **`prim-skills-install`** installs every skill into `~/.agents/skills` (a Pi
+  scan root), unified in one place:
+  - **own skills** (this repo's `skills/*`) are copied in;
+  - **external skills** (Archify, grill-me) are installed from source with the
+    `skills` CLI so they stay updatable.
+  Re-running it refreshes; `prim-skills-install update` updates the external
+  skills. Target agent: **Pi** (for now). Needs Node/npx (the environment
+  installer, devlab, owns Node).
 
-Keeping content here means the same skills work for any agent, with low coupling
-and low tech debt: update a skill once, every consumer picks it up.
+- Install / bootstrap:
+  ```sh
+  curl -fsSL https://raw.githubusercontent.com/bit-crew/prim-skills/main/install.sh | sh
+  # update external skills:
+  curl -fsSL .../install.sh | sh -s -- update
+  ```
+
+- **devlab** (`bit-crew/devlab`) provisions the environment + Pi/gentle-ai and,
+  on the VPS profile, calls `prim-skills-install` automatically. devlab no longer
+  copies skills itself; it still curates its own instructions into Pi's AGENTS.md
+  (that steering is specific to devlab, not universal skills).
+
+Keeping skills here (content + installer) means the same set works for any agent,
+with low coupling: update a skill once, re-run the installer, every consumer
+picks it up.

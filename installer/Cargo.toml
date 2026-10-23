@@ -1,0 +1,20 @@
+[package]
+name = "prim-skills-install"
+version = "0.1.0"
+edition = "2021"
+description = "prim-skills installer: installs agent-agnostic skills (own + external) into Pi"
+license = "MIT"
+
+[[bin]]
+name = "prim-skills-install"
+path = "src/main.rs"
+
+[dependencies]
+dirs = "5.0"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"

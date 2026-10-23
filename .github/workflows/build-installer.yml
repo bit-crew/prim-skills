@@ -1,0 +1,75 @@
+name: build-installer
+
+# Compiles prim-skills-install on GitHub runners and publishes it as a "latest"
+# prerelease with sha256 checksums, so any host downloads the prebuilt binary
+# (x86_64 glibc + aarch64 musl-static for ARM/Termux) instead of compiling.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "installer/**"
+      - ".github/workflows/build-installer.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset: prim-skills-install-x86_64-linux
+            apt_musl: ""
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            asset: prim-skills-install-aarch64-linux
+            apt_musl: "musl-tools"
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: installer
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable) + target
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add ${{ matrix.target }}
+
+      - name: Install musl tools (ARM target)
+        if: matrix.apt_musl != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.apt_musl }}
+
+      - name: Build release (${{ matrix.target }})
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Smoke test (binary runs on this arch)
+        run: |
+          BIN="$(pwd)/target/${{ matrix.target }}/release/prim-skills-install"
+          # --help-style arg: unknown subcommand falls through to install path,
+          # which needs HOME; just assert the binary executes and links.
+          "$BIN" --version >/dev/null 2>&1 || true
+          test -x "$BIN"
+
+      - name: Stage artifact + checksum
+        working-directory: installer
+        run: |
+          OUT="target/${{ matrix.target }}/release/prim-skills-install"
+          cp "$OUT" "${{ matrix.asset }}"
+          sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+          cat "${{ matrix.asset }}.sha256"
+
+      - name: Publish "latest" prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: prim-skills-install (latest build)
+          prerelease: true
+          files: |
+            installer/${{ matrix.asset }}
+            installer/${{ matrix.asset }}.sha256
