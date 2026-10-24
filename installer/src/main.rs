@@ -35,6 +35,7 @@ const SKILLS_REPO: &str = "https://github.com/bit-crew/prim-skills.git";
 const EXTERNAL_SKILLS: &[(&str, &str)] = &[
     ("tt-a1i/archify", "archify"),
     ("mattpocock/skills", "grilling"),
+    ("DietrichGebert/ponytail", "ponytail"),
 ];
 
 fn log(msg: &str) {
