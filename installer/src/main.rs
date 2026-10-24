@@ -192,12 +192,35 @@ fn install_external_skills() {
 
 // --- helpers ----------------------------------------------------------------
 
-fn has_npx() -> bool {
-    which("npx")
+/// Where devlab installs Node. Not always on a non-interactive shell's PATH
+/// (that only happens via .zshrc), so we look here directly and prepend it when
+/// running npx — otherwise npx's shebang fails to find `node`.
+fn node_bin_dir() -> Option<PathBuf> {
+    let dir = dirs::home_dir()?.join(".local").join("node").join("bin");
+    dir.is_dir().then_some(dir)
 }
 
+fn has_npx() -> bool {
+    which("npx")
+        || node_bin_dir()
+            .map(|d| d.join("npx").is_file())
+            .unwrap_or(false)
+}
+
+/// Run npx with ~/.local/node/bin prepended to PATH so both npx and the `node`
+/// its shebang invokes resolve even in a bare non-interactive environment.
 fn run_npx(args: &[&str]) -> bool {
-    run_ok("npx", args)
+    let mut cmd = Command::new("npx");
+    cmd.args(args);
+    if let Some(node_dir) = node_bin_dir() {
+        let path = std::env::var_os("PATH").unwrap_or_default();
+        let mut dirs: Vec<PathBuf> = vec![node_dir];
+        dirs.extend(std::env::split_paths(&path));
+        if let Ok(joined) = std::env::join_paths(dirs) {
+            cmd.env("PATH", joined);
+        }
+    }
+    cmd.status().map(|s| s.success()).unwrap_or(false)
 }
 
 fn run_ok(program: &str, args: &[&str]) -> bool {
