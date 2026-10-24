@@ -1,10 +1,6 @@
-
-
-
-
 ---
-name: setup
-description: Initialize new Python projects with complete tooling. Use when starting a new project or setting up environment from scratch.
+name: project-setup
+description: Initialize new Python projects with complete tooling (uv-based). Use when starting a new project or setting up environment from scratch.
 allowed-tools: Read, Grep, Glob, Write, Edit, Bash
 ---
 
@@ -24,7 +20,7 @@ git commit -m "Initial commit"
 ```
 
 ### 2. Create .gitignore
-Copy from `skills/devops/assets/.gitignore` or create minimal:
+Copy from `skills/project-setup/assets/.gitignore` or create minimal:
 ```
 __pycache__/
 *.py[cod]
@@ -39,26 +35,29 @@ build/
 ```
 
 ### 3. Copy Configuration Files
-From `skills/devops/assets/`:
+From `skills/project-setup/assets/`:
 - `pyproject.toml` - project metadata + tool configs
 - `.pre-commit-config.yaml` - pre-commit hooks
 
 ### 4. Install Dependencies
 ```bash
-python -m pip install -e ".[dev]"
+uv venv              # create the project .venv
+uv sync              # install deps + dev group from pyproject.toml / uv.lock
 pre-commit install
 pre-commit install --hook-type commit-msg --hook-type pre-push
 ```
+Use `uv add <pkg>` / `uv add --dev <pkg>` to add dependencies (never `pip install`).
+Run project commands with `uv run <cmd>` so they execute inside the venv.
 
 ### 5. Validate Setup
 ```bash
-makevalidate  # or ruff check && ruff format --check && bandit -c pyproject.toml -r skills/
+make validate  # or: uv run ruff check . && uv run ruff format --check . && uv run bandit -c pyproject.toml -r src/
 ```
 
 ## Configuration Templates Location
 
 ```
-skills/devops/assets/
+skills/project-setup/assets/
 ├── pyproject.toml          # Ruff, codespell, pytest config
 ├── .pre-commit-config.yaml # All hooks (security, lint, format)
 ├── .gitignore             # Python project ignores
@@ -71,20 +70,20 @@ skills/devops/assets/
 .PHONY: install test lint format validate clean
 
 install:
-    python -m pip install -e ".[dev]"
+    uv sync
     pre-commit install
 
 test:
-    pytest
+    uv run pytest
 
 lint:
-    ruff check .
+    uv run ruff check .
 
 format:
-    ruff format .
+    uv run ruff format .
 
 validate:
-    ruff check . && ruff format --check . && bandit -c pyproject.toml -r skills/
+    uv run ruff check . && uv run ruff format --check . && uv run bandit -c pyproject.toml -r src/
 
 clean:
     rm -rf __pycache__/ .pytest_cache/ .ruff_cache/ *.egg-info/
@@ -102,17 +101,17 @@ Ensure installed versions match config:
 ## Post-Setup Validation
 
 After initial setup, verify:
-1. `ruff check .` passes
-2. `ruff format --check .` passes
-3. `bandit -r skills/` passes
-4. `pre-commit run --all-files` passes
+1. `uv run ruff check .` passes
+2. `uv run ruff format --check .` passes
+3. `uv run bandit -r src/` passes
+4. `uv run pre-commit run --all-files` passes
 
 ## Asset Copy Commands
 
 ```bash
-cp skills/devops/assets/pyproject.toml .
-cp skills/devops/assets/.pre-commit-config.yaml .
-cp skills/devops/assets/.gitignore .
+cp skills/project-setup/assets/pyproject.toml .
+cp skills/project-setup/assets/.pre-commit-config.yaml .
+cp skills/project-setup/assets/.gitignore .
 ```
 
 ---
